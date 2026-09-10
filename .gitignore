@@ -13,3 +13,8 @@ venv/
 
 # Output data
 *.csv
+runs.json
+
+# py2app build artifacts
+build/
+dist/

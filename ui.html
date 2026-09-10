@@ -1,0 +1,355 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>ЛидоКабан</title>
+<style>
+  :root {
+    --bg: #fbf3e7;
+    --card: #fffaf2;
+    --ink: #3a2417;
+    --muted: #8a6a52;
+    --primary: #c1622d;
+    --primary-dark: #a3491d;
+    --accent: #5b7b4b;
+    --line: #e8d7c3;
+    --shadow: 0 2px 10px rgba(74, 46, 30, 0.10);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, "SF Pro Text", sans-serif;
+    margin: 0;
+    padding: 24px 28px 32px;
+    background: linear-gradient(180deg, #fbf3e7 0%, #f6e9d6 100%);
+    color: var(--ink);
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+
+  header .mascot {
+    font-size: 40px;
+    line-height: 1;
+    filter: drop-shadow(0 2px 3px rgba(74, 46, 30, 0.25));
+  }
+
+  header h1 {
+    margin: 0;
+    font-size: 22px;
+    color: var(--primary-dark);
+  }
+
+  header p {
+    margin: 2px 0 0;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 18px;
+  }
+
+  .tabs button {
+    background: transparent;
+    border: none;
+    padding: 9px 16px;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--muted);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .tabs button.active {
+    background: var(--primary);
+    color: #fff8f0;
+  }
+
+  .tabs button:not(.active):hover {
+    background: #efdcc4;
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 20px 22px;
+    box-shadow: var(--shadow);
+    margin-bottom: 18px;
+  }
+
+  .field { margin-bottom: 12px; }
+  .field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  .field input {
+    width: 100%;
+    max-width: 320px;
+    padding: 9px 12px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    font-size: 14px;
+    background: #fff;
+    color: var(--ink);
+  }
+  .field input:focus {
+    outline: none;
+    border-color: var(--primary);
+  }
+
+  .hunt-btn {
+    background: linear-gradient(180deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: #fff8f0;
+    border: none;
+    padding: 11px 22px;
+    border-radius: 12px;
+    font-size: 14.5px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 3px 8px rgba(163, 73, 29, 0.35);
+    margin-top: 4px;
+  }
+  .hunt-btn:hover { filter: brightness(1.06); }
+  .hunt-btn:disabled {
+    cursor: default;
+    opacity: 0.5;
+    box-shadow: none;
+  }
+
+  button.link {
+    padding: 4px 12px;
+    margin: 0;
+    font-size: 12px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: #fff;
+    color: var(--primary-dark);
+    cursor: pointer;
+  }
+  button.link:hover:not(:disabled) { background: #f6e9d6; }
+  button.link:disabled { opacity: 0.4; cursor: default; }
+
+  #status {
+    margin: 14px 0 6px;
+    font-size: 13.5px;
+    color: var(--muted);
+    min-height: 20px;
+  }
+  #status.busy::before { content: "🐗💨 "; }
+  #status.done::before { content: "🎉 "; }
+  #status.error::before { content: "🌳💥 "; }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    background: var(--card);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  th, td {
+    padding: 8px 10px;
+    font-size: 12.5px;
+    text-align: left;
+    border-bottom: 1px solid var(--line);
+  }
+  th {
+    background: #f1e2cc;
+    color: var(--primary-dark);
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.03em;
+  }
+  tbody tr:hover { background: #fbf1e2; }
+  tbody tr:last-child td { border-bottom: none; }
+
+  .empty-note {
+    padding: 18px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+  <header>
+    <div class="mascot">🐗</div>
+    <div>
+      <h1>ЛидоКабан</h1>
+      <p>Вынюхивает лиды не хуже, чем трюфели</p>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <button id="tabSearch" class="active" onclick="showTab('search')">🐾 Охота</button>
+    <button id="tabHistory" onclick="showTab('history')">📜 Прошлые вылазки</button>
+  </div>
+
+  <div id="searchView">
+    <div class="card">
+      <div class="field"><label>Город</label><input id="city" placeholder="Дананг"></div>
+      <div class="field"><label>Категория</label><input id="category" placeholder="кафе"></div>
+      <div class="field"><label>Код страны</label><input id="country" placeholder="VN"></div>
+      <button id="startBtn" class="hunt-btn" onclick="start()">🐗 Вперёд, за лидами!</button>
+      <div id="status"></div>
+    </div>
+
+    <table id="results">
+      <thead>
+        <tr>
+          <th>Название</th><th>Телефон</th><th>Адрес</th><th>Сайт</th><th>Рейтинг</th><th>Отзывы</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div id="historyView" hidden>
+    <table id="historyTable">
+      <thead>
+        <tr>
+          <th>Дата</th><th>Город</th><th>Категория</th><th>Страна</th>
+          <th>Найдено</th><th>Пропущено</th><th>Статус</th><th></th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+<script>
+function showTab(tab) {
+  const isSearch = tab === 'search';
+  document.getElementById('searchView').hidden = !isSearch;
+  document.getElementById('historyView').hidden = isSearch;
+  document.getElementById('tabSearch').classList.toggle('active', isSearch);
+  document.getElementById('tabHistory').classList.toggle('active', !isSearch);
+  if (!isSearch) {
+    loadHistory();
+  }
+}
+
+function setStatus(text, mood) {
+  const el = document.getElementById('status');
+  el.textContent = text;
+  el.className = mood || '';
+}
+
+function start() {
+  const city = document.getElementById('city').value;
+  const category = document.getElementById('category').value;
+  const country = document.getElementById('country').value;
+
+  document.querySelector('#results tbody').innerHTML = '';
+  document.getElementById('startBtn').disabled = true;
+  setStatus('Кабан принюхивается, выходит на след...', 'busy');
+
+  window.pywebview.api.start(city, category, country);
+}
+
+function onStatus(text) {
+  setStatus(text, 'busy');
+}
+
+function addLeadRow(tbody, row) {
+  const tr = document.createElement('tr');
+  ['name', 'phone', 'address', 'has_website', 'rating', 'reviews_count'].forEach((key) => {
+    const td = document.createElement('td');
+    td.textContent = row[key] || '';
+    tr.appendChild(td);
+  });
+  tbody.appendChild(tr);
+}
+
+function onLead(row) {
+  addLeadRow(document.querySelector('#results tbody'), row);
+}
+
+function onDone(info) {
+  const extra = info.skipped ? ` (${info.skipped} убежало без телефона)` : '';
+  setStatus(`Кабан набил ${info.collected} лидов в мешок${extra}. Файл: ${info.path}`, 'done');
+  document.getElementById('startBtn').disabled = false;
+}
+
+const STATUS_LABELS = { done: '🐗 готово', running: '🐾 в пути', error: '🌳 застрял' };
+
+function loadHistory() {
+  const tbody = document.querySelector('#historyTable tbody');
+  tbody.innerHTML = '<tr><td colspan="8" class="empty-note">Кабан роется в архивах...</td></tr>';
+
+  window.pywebview.api.get_history().then((runs) => {
+    tbody.innerHTML = '';
+    if (!runs.length) {
+      tbody.innerHTML = '<tr><td colspan="8" class="empty-note">Кабан ещё не выходил на охоту 🐗</td></tr>';
+      return;
+    }
+    runs.forEach((run) => {
+      const tr = document.createElement('tr');
+
+      const dateTd = document.createElement('td');
+      dateTd.textContent = (run.started_at || '').replace('T', ' ').slice(0, 16);
+      tr.appendChild(dateTd);
+
+      ['city', 'category', 'country_code'].forEach((key) => {
+        const td = document.createElement('td');
+        td.textContent = run[key] || '';
+        tr.appendChild(td);
+      });
+
+      const collectedTd = document.createElement('td');
+      collectedTd.textContent = run.collected ?? 0;
+      tr.appendChild(collectedTd);
+
+      const skippedTd = document.createElement('td');
+      skippedTd.textContent = run.skipped ?? 0;
+      tr.appendChild(skippedTd);
+
+      const statusTd = document.createElement('td');
+      statusTd.textContent = STATUS_LABELS[run.status] || run.status || '';
+      tr.appendChild(statusTd);
+
+      const actionTd = document.createElement('td');
+      const btn = document.createElement('button');
+      btn.className = 'link';
+      btn.textContent = 'Показать лиды';
+      btn.disabled = !run.collected;
+      btn.onclick = () => showRunLeads(run.run_id, run);
+      actionTd.appendChild(btn);
+      tr.appendChild(actionTd);
+
+      tbody.appendChild(tr);
+    });
+  });
+}
+
+function showRunLeads(runId, run) {
+  window.pywebview.api.get_run_leads(runId).then((leads) => {
+    const tbody = document.querySelector('#results tbody');
+    tbody.innerHTML = '';
+    leads.forEach((row) => addLeadRow(tbody, row));
+    setStatus(
+      `Достали из мешка лиды похода «${run.category}, ${run.city}» от ${(run.started_at || '').replace('T', ' ').slice(0, 16)}`,
+      'done'
+    );
+    showTab('search');
+  });
+}
+</script>
+</body>
+</html>
