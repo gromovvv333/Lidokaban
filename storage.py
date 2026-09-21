@@ -3,7 +3,7 @@ import json
 import os
 
 FIELDNAMES = [
-    "run_id", "name", "phone", "address", "has_website", "rating", "reviews_count",
+    "run_id", "name", "phone", "address", "has_website", "website", "rating", "reviews_count",
     "telegram", "has_bot", "whatsapp", "zalo", "is_mobile", "wa_link", "tg_link", "russian",
 ]
 

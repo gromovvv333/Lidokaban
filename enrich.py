@@ -96,6 +96,7 @@ def build_row(lead: dict, phone: str, run_id: str, country_code: str) -> dict:
         "phone": phone,
         "address": lead.get("address") or "",
         "has_website": lead.get("has_website") or "",
+        "website": lead.get("website_url") or "",
         "rating": lead.get("rating") or "",
         "reviews_count": lead.get("reviews_count") or "",
         "telegram": contacts["telegram"],

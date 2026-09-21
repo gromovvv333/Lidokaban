@@ -2,6 +2,7 @@ import datetime
 import json
 import os
 import threading
+import webbrowser
 
 os.environ.setdefault(
     "PLAYWRIGHT_BROWSERS_PATH", os.path.expanduser("~/Library/Caches/ms-playwright")
@@ -99,6 +100,11 @@ class Api:
                     "path": os.path.abspath(OUTPUT_CSV_PATH),
                 },
             )
+
+    def open_url(self, url: str) -> None:
+        # Только http(s): клик в окне pywebview иначе навигирует само окно
+        if url.startswith(("http://", "https://")):
+            webbrowser.open(url)
 
     def get_history(self) -> list[dict]:
         return list(reversed(load_runs(RUNS_JSON_PATH)))

@@ -142,6 +142,27 @@
     cursor: pointer;
   }
   button.link:hover:not(:disabled) { background: #f6e9d6; }
+  button.copy {
+    margin-left: 6px;
+    padding: 1px 6px;
+    font-size: 12px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: #fff;
+    cursor: pointer;
+  }
+  button.copy:hover { background: #f6e9d6; }
+  button.copy.ok { background: #d9efd0; }
+  td.linkcell .txt {
+    display: inline-block;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: middle;
+  }
+  .table-wrap { overflow-x: auto; }
+  a.ext { color: var(--primary-dark); cursor: pointer; text-decoration: underline; }
   button.link:disabled { opacity: 0.4; cursor: default; }
 
   #status {
@@ -218,6 +239,7 @@
       <div id="status"></div>
     </div>
 
+    <div class="table-wrap">
     <table id="results">
       <thead>
         <tr>
@@ -226,6 +248,7 @@
       </thead>
       <tbody></tbody>
     </table>
+    </div>
   </div>
 
   <div id="historyView" hidden>
@@ -275,11 +298,66 @@ function onStatus(text) {
   setStatus(text, 'busy');
 }
 
+const COPY_KEYS = ['phone', 'telegram', 'whatsapp', 'zalo', 'wa_link', 'tg_link'];
+
+function copyText(text, btn) {
+  const done = () => {
+    btn.classList.add('ok');
+    btn.textContent = '✓';
+    setTimeout(() => { btn.classList.remove('ok'); btn.textContent = '📋'; }, 1200);
+  };
+  const fallback = () => {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); } catch (e) {}
+    ta.remove();
+    done();
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(done, fallback);
+  } else {
+    fallback();
+  }
+}
+
 function addLeadRow(tbody, row) {
   const tr = document.createElement('tr');
-  ['name', 'phone', 'address', 'has_website', 'rating', 'reviews_count', 'telegram', 'has_bot', 'whatsapp', 'zalo', 'is_mobile', 'wa_link', 'tg_link', 'russian'].forEach((key) => {
+  ['name', 'phone', 'address', 'website', 'rating', 'reviews_count', 'telegram', 'has_bot',
+   'whatsapp', 'zalo', 'is_mobile', 'wa_link', 'tg_link', 'russian'].forEach((key) => {
     const td = document.createElement('td');
-    td.textContent = row[key] || '';
+    const value = row[key] || '';
+
+    if (key === 'website') {
+      // старые записи истории без URL показывают прежнее да/нет
+      const url = value || '';
+      if (url.startsWith('http')) {
+        const a = document.createElement('a');
+        a.className = 'ext';
+        a.textContent = url.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '');
+        a.title = url;
+        a.onclick = (ev) => { ev.preventDefault(); window.pywebview.api.open_url(url); };
+        td.appendChild(a);
+      } else {
+        td.textContent = row.has_website || '';
+      }
+    } else if (COPY_KEYS.includes(key) && value) {
+      td.className = 'linkcell';
+      const span = document.createElement('span');
+      span.className = 'txt';
+      span.textContent = value;
+      span.title = value;
+      const btn = document.createElement('button');
+      btn.className = 'copy';
+      btn.textContent = '📋';
+      btn.title = 'Скопировать';
+      btn.onclick = () => copyText(value, btn);
+      td.appendChild(span);
+      td.appendChild(btn);
+    } else {
+      td.textContent = value;
+    }
     tr.appendChild(td);
   });
   tbody.appendChild(tr);
