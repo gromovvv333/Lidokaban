@@ -28,17 +28,17 @@ class Api:
         self.window = None
         self.running = False
 
-    def start(self, city: str, category: str, country_code: str, source: str = "google") -> None:
+    def start(self, city: str, category: str, country_code: str, source: str = "google", russian: bool = False) -> None:
         if self.running:
             return
         self.running = True
         threading.Thread(
             target=self._scrape_thread,
-            args=(city.strip(), category.strip(), country_code.strip().upper(), source),
+            args=(city.strip(), category.strip(), country_code.strip().upper(), source, russian),
             daemon=True,
         ).start()
 
-    def _scrape_thread(self, city: str, category: str, country_code: str, source: str) -> None:
+    def _scrape_thread(self, city: str, category: str, country_code: str, source: str, russian: bool) -> None:
         query = f"{category}, {city}"
         run_id = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         collected = 0
@@ -53,6 +53,7 @@ class Api:
                 "category": category,
                 "country_code": country_code,
                 "source": source,
+                "russian": russian,
                 "started_at": datetime.datetime.now().isoformat(timespec="seconds"),
                 "finished_at": None,
                 "collected": 0,
@@ -64,7 +65,7 @@ class Api:
         self._call_js("onStatus", f"Кабан идёт по следу: {query}")
 
         try:
-            for lead in scrape(source, query, MAX_LEADS):
+            for lead in scrape(source, query, MAX_LEADS, russian):
                 phone = _pick_phone(lead, country_code, source)
                 if not phone:
                     skipped += 1

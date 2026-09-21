@@ -1,4 +1,5 @@
 import random
+import re
 import time
 
 from playwright.sync_api import Page, sync_playwright
@@ -52,9 +53,10 @@ def _extract_listing_details(page: Page) -> dict | None:
         # Пример текста: "4.7\n(2,196)"
         lines = [line.strip() for line in rating_text.splitlines() if line.strip()]
         if lines:
-            rating = lines[0]
+            rating = lines[0].replace(",", ".")
         if len(lines) > 1:
-            reviews_count = lines[1].strip("()").replace(",", "")
+            # "(2,196)" / "(2 196)" в зависимости от языка интерфейса
+            reviews_count = re.sub(r"\D", "", lines[1])
     except Exception:
         pass
 
@@ -69,13 +71,14 @@ def _extract_listing_details(page: Page) -> dict | None:
     }
 
 
-def run(query: str, max_leads: int = MAX_LEADS):
+def run(query: str, max_leads: int = MAX_LEADS, russian: bool = False):
     """Генератор: ищет query в Google Maps и по одному отдаёт найденные места
     (name/phone/address). Останавливается на max_leads или когда результаты
     заканчиваются."""
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=False)
-        page = browser.new_page()
+        # Русский интерфейс смещает выдачу к бизнесам с русскими названиями/отзывами
+        page = browser.new_page(locale="ru-RU") if russian else browser.new_page()
         page.goto("https://www.google.com/maps", timeout=60000)
 
         page.locator('input[name="q"]').fill(query)

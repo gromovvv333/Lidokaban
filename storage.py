@@ -4,7 +4,7 @@ import os
 
 FIELDNAMES = [
     "run_id", "name", "phone", "address", "has_website", "rating", "reviews_count",
-    "telegram", "has_bot", "whatsapp", "zalo", "is_mobile", "wa_link", "tg_link",
+    "telegram", "has_bot", "whatsapp", "zalo", "is_mobile", "wa_link", "tg_link", "russian",
 ]
 
 

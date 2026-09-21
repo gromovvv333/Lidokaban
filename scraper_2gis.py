@@ -1,4 +1,4 @@
-def run(query: str, max_leads: int):
+def run(query: str, max_leads: int, russian: bool = False):
     """Заглушка: 2ГИС отдаёт данные только с российских IP (иначе капча/редирект
     на /museum). Парсер будет добавлен, когда можно будет тестировать через
     российский IP."""

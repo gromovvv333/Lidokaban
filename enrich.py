@@ -18,11 +18,24 @@ def _fetch(url: str, timeout: int = 8) -> str | None:
         return None
 
 
+_CYR_RE = re.compile(r"[а-яёА-ЯЁ]")
+_RU_HINT_RE = re.compile(r'lang=["\']ru|hreflang=["\']ru|href=["\'][^"\']*/ru/?["\']')
+
+
+def has_cyrillic(text: str) -> bool:
+    return bool(_CYR_RE.search(text or ""))
+
+
+def _site_is_russian(html: str) -> bool:
+    return len(_CYR_RE.findall(html)) >= 50 or bool(_RU_HINT_RE.search(html))
+
+
 def find_messengers(website_url: str) -> dict:
-    """Ищет на сайте бизнеса ссылки на Telegram и WhatsApp."""
+    """Ищет на сайте бизнеса ссылки на Telegram и WhatsApp и смотрит, есть ли
+    на сайте русский язык (site_ru: True/False, None — сайт не открылся)."""
     html = _fetch(website_url) if website_url else None
     if not html:
-        return {"telegram": "", "whatsapp": ""}
+        return {"telegram": "", "whatsapp": "", "site_ru": None}
 
     telegram = next(
         (m for m in _TG_RE.findall(html) if m.lower() not in _TG_SKIP), ""
@@ -31,7 +44,17 @@ def find_messengers(website_url: str) -> dict:
     return {
         "telegram": f"@{telegram}" if telegram else "",
         "whatsapp": f"+{wa.group(1)}" if wa else "",
+        "site_ru": _site_is_russian(html),
     }
+
+
+def russian_speaking(lead: dict, site_ru: bool | None) -> str:
+    """Эвристика: кириллица в названии (адрес не берём: Google сам переводит его
+    при русском интерфейсе) или русский язык на сайте → 'да'.
+    Если признаков нет, но сайт проверили → 'нет'; проверить нечем → ''."""
+    if has_cyrillic(lead.get("name")) or site_ru:
+        return "да"
+    return "" if site_ru is None else "нет"
 
 
 def is_telegram_bot(username: str) -> str:
@@ -79,5 +102,6 @@ def build_row(lead: dict, phone: str, run_id: str, country_code: str) -> dict:
         "has_bot": is_telegram_bot(contacts["telegram"]),
         "whatsapp": contacts["whatsapp"],
         "zalo": zalo_link(phone, country_code),
+        "russian": russian_speaking(lead, contacts["site_ru"]),
         **messenger_links(phone),
     }
