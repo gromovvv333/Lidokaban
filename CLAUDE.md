@@ -11,6 +11,8 @@
 - `config.py` — константы (MAX_LEADS=25, паузы, пути к CSV/JSON)
 - `scraper.py` — Playwright-скрапинг Google Maps (генератор `run()`)
 - `phone.py` — нормализация телефона в E.164 через `phonenumbers`
+- `enrich.py` — контакты с сайта бизнеса (Telegram/WhatsApp), проверка «это бот» через t.me, ссылка Zalo для VN
+- `sources.py` / `scraper_2gis.py` — выбор источника; 2ГИС пока заглушка (нужен RU IP, с VN — капча/редирект)
 - `storage.py` — запись лидов в CSV + история запусков в `runs.json`
 - `main.py` — консольная версия (input() на город/категорию/страну)
 - `app.py` — GUI-версия: класс `Api`, дергает pywebview, тот же scraper/storage
@@ -40,6 +42,14 @@
   служебный хук для PyInstaller, которого нет как обычного модуля. НЕ добавляй
   playwright в `packages`, он и так подхватывается через обычный import graph.
   Сейчас `excludes: ["playwright._impl.__pyinstaller"]` подстраховкой.
+- **playwright и greenlet в `.app` должны лежать обычными папками, не в zip.**
+  py2app пакует их в `lib/python314.zip`, откуда не запускается `driver/node` и
+  не грузится `greenlet/_greenlet.so` → скрапинг падает мгновенно, в GUI «0 лидов»,
+  в runs.json статус `error`. После сборки запускай `./postbuild.sh` (копирует
+  папки в `dist/...` и обновляет `/Applications`). Chromium ищется через
+  `PLAYWRIGHT_BROWSERS_PATH` (выставлен в начале `app.py` на
+  `~/Library/Caches/ms-playwright`). Ошибки скрапинга в `.app` пишутся в
+  `~/leadokaban_error.log`.
 - **Сборка `.app` занимает ~13 минут** (анализ графа модулей pyobjc/webview),
   это нормально, не значит, что зависло — проверяй `ps aux | grep py2app` на
   активность CPU, а не просто наличие процесса.

@@ -97,7 +97,7 @@
     text-transform: uppercase;
     letter-spacing: 0.03em;
   }
-  .field input {
+  .field input, .field select {
     width: 100%;
     max-width: 320px;
     padding: 9px 12px;
@@ -207,6 +207,12 @@
       <div class="field"><label>Город</label><input id="city" placeholder="Дананг"></div>
       <div class="field"><label>Категория</label><input id="category" placeholder="кафе"></div>
       <div class="field"><label>Код страны</label><input id="country" placeholder="VN"></div>
+      <div class="field"><label>Источник</label>
+        <select id="source">
+          <option value="google">Google Maps</option>
+          <option value="2gis">2ГИС (нужен RU IP)</option>
+        </select>
+      </div>
       <button id="startBtn" class="hunt-btn" onclick="start()">🐗 Вперёд, за лидами!</button>
       <div id="status"></div>
     </div>
@@ -214,7 +220,7 @@
     <table id="results">
       <thead>
         <tr>
-          <th>Название</th><th>Телефон</th><th>Адрес</th><th>Сайт</th><th>Рейтинг</th><th>Отзывы</th>
+          <th>Название</th><th>Телефон</th><th>Адрес</th><th>Сайт</th><th>Рейтинг</th><th>Отзывы</th><th>Telegram</th><th>Бот</th><th>WhatsApp</th><th>Zalo</th>
         </tr>
       </thead>
       <tbody></tbody>
@@ -260,7 +266,8 @@ function start() {
   document.getElementById('startBtn').disabled = true;
   setStatus('Кабан принюхивается, выходит на след...', 'busy');
 
-  window.pywebview.api.start(city, category, country);
+  const source = document.getElementById('source').value;
+  window.pywebview.api.start(city, category, country, source);
 }
 
 function onStatus(text) {
@@ -269,7 +276,7 @@ function onStatus(text) {
 
 function addLeadRow(tbody, row) {
   const tr = document.createElement('tr');
-  ['name', 'phone', 'address', 'has_website', 'rating', 'reviews_count'].forEach((key) => {
+  ['name', 'phone', 'address', 'has_website', 'rating', 'reviews_count', 'telegram', 'has_bot', 'whatsapp', 'zalo'].forEach((key) => {
     const td = document.createElement('td');
     td.textContent = row[key] || '';
     tr.appendChild(td);

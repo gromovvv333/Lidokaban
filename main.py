@@ -1,6 +1,7 @@
 import datetime
 
 from config import MAX_LEADS, OUTPUT_CSV_PATH, RUNS_JSON_PATH
+from enrich import build_row
 from phone import normalize_phone
 from scraper import run as scrape
 from storage import add_run, append_lead, update_run
@@ -43,15 +44,7 @@ def main() -> None:
 
             append_lead(
                 OUTPUT_CSV_PATH,
-                {
-                    "run_id": run_id,
-                    "name": lead.get("name") or "",
-                    "phone": phone,
-                    "address": lead.get("address") or "",
-                    "has_website": lead.get("has_website") or "",
-                    "rating": lead.get("rating") or "",
-                    "reviews_count": lead.get("reviews_count") or "",
-                },
+                build_row(lead, phone, run_id, country_code),
             )
             collected += 1
             print(f"[{collected}] {lead.get('name')} — {phone}")

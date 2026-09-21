@@ -35,7 +35,14 @@ def _extract_listing_details(page: Page) -> dict | None:
     except Exception:
         pass
 
-    has_website = page.locator('a[data-item-id="authority"]').count() > 0
+    website_url = None
+    try:
+        website_url = page.locator('a[data-item-id="authority"]').first.get_attribute(
+            "href", timeout=3000
+        )
+    except Exception:
+        pass
+    has_website = bool(website_url)
 
     rating = None
     reviews_count = None
@@ -56,6 +63,7 @@ def _extract_listing_details(page: Page) -> dict | None:
         "phone": phone,
         "address": address,
         "has_website": "да" if has_website else "нет",
+        "website_url": website_url or "",
         "rating": rating or "",
         "reviews_count": reviews_count or "",
     }
