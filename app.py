@@ -1,6 +1,7 @@
 import datetime
 import json
 import os
+import subprocess
 import threading
 import webbrowser
 
@@ -105,6 +106,15 @@ class Api:
         # Только http(s): клик в окне pywebview иначе навигирует само окно
         if url.startswith(("http://", "https://")):
             webbrowser.open(url)
+
+    def open_app_link(self, app_url: str, fallback_url: str) -> None:
+        """Открывает чат сразу в приложении (tg:// / whatsapp://). Если приложение
+        не установлено — `open` вернёт ошибку, тогда открываем https-ссылку в браузере."""
+        if not app_url.startswith(("tg://", "whatsapp://")):
+            return
+        result = subprocess.run(["open", app_url], capture_output=True)
+        if result.returncode != 0:
+            self.open_url(fallback_url)
 
     def get_history(self) -> list[dict]:
         return list(reversed(load_runs(RUNS_JSON_PATH)))

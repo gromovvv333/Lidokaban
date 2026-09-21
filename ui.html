@@ -298,6 +298,11 @@ function onStatus(text) {
   setStatus(text, 'busy');
 }
 
+const APP_LINKS = {
+  tg_link: { icon: '✈', title: 'Открыть в Telegram', scheme: (d) => `tg://resolve?phone=${d}` },
+  wa_link: { icon: '💬', title: 'Открыть в WhatsApp', scheme: (d) => `whatsapp://send?phone=${d}` },
+};
+
 const COPY_KEYS = ['phone', 'telegram', 'whatsapp', 'zalo', 'wa_link', 'tg_link'];
 
 function copyText(text, btn) {
@@ -355,6 +360,16 @@ function addLeadRow(tbody, row) {
       btn.onclick = () => copyText(value, btn);
       td.appendChild(span);
       td.appendChild(btn);
+      const app = APP_LINKS[key];
+      if (app) {
+        const digits = value.replace(/\D/g, '');
+        const openBtn = document.createElement('button');
+        openBtn.className = 'copy';
+        openBtn.textContent = app.icon;
+        openBtn.title = app.title;
+        openBtn.onclick = () => window.pywebview.api.open_app_link(app.scheme(digits), value);
+        td.appendChild(openBtn);
+      }
     } else {
       td.textContent = value;
     }
