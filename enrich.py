@@ -1,6 +1,8 @@
 import re
 import urllib.request
 
+from phone import is_mobile
+
 _UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/131.0 Safari/537.36"
 _TG_RE = re.compile(r"(?:t\.me|telegram\.me)/([A-Za-z][A-Za-z0-9_]{4,31})(?![A-Za-z0-9_])")
 _TG_SKIP = {"share", "joinchat", "addstickers", "iv", "proxy", "socks", "login"}
@@ -50,6 +52,19 @@ def zalo_link(phone: str, country_code: str) -> str:
     return f"https://zalo.me/{phone.lstrip('+')}"
 
 
+def messenger_links(phone: str) -> dict:
+    """Ссылки на чат по номеру. Проверить, есть ли аккаунт, нельзя — но по
+    мобильному номеру он скорее всего есть, городской в мессенджерах не бывает."""
+    if not phone or not is_mobile(phone):
+        return {"is_mobile": "нет", "wa_link": "", "tg_link": ""}
+    digits = phone.lstrip("+")
+    return {
+        "is_mobile": "да",
+        "wa_link": f"https://wa.me/{digits}",
+        "tg_link": f"https://t.me/+{digits}",
+    }
+
+
 def build_row(lead: dict, phone: str, run_id: str, country_code: str) -> dict:
     contacts = find_messengers(lead.get("website_url") or "")
     return {
@@ -64,4 +79,5 @@ def build_row(lead: dict, phone: str, run_id: str, country_code: str) -> dict:
         "has_bot": is_telegram_bot(contacts["telegram"]),
         "whatsapp": contacts["whatsapp"],
         "zalo": zalo_link(phone, country_code),
+        **messenger_links(phone),
     }

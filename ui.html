@@ -220,7 +220,7 @@
     <table id="results">
       <thead>
         <tr>
-          <th>Название</th><th>Телефон</th><th>Адрес</th><th>Сайт</th><th>Рейтинг</th><th>Отзывы</th><th>Telegram</th><th>Бот</th><th>WhatsApp</th><th>Zalo</th>
+          <th>Название</th><th>Телефон</th><th>Адрес</th><th>Сайт</th><th>Рейтинг</th><th>Отзывы</th><th>Telegram</th><th>Бот</th><th>WhatsApp</th><th>Zalo</th><th>Моб.</th><th>WhatsApp-чат</th><th>Telegram-чат</th>
         </tr>
       </thead>
       <tbody></tbody>
@@ -276,7 +276,7 @@ function onStatus(text) {
 
 function addLeadRow(tbody, row) {
   const tr = document.createElement('tr');
-  ['name', 'phone', 'address', 'has_website', 'rating', 'reviews_count', 'telegram', 'has_bot', 'whatsapp', 'zalo'].forEach((key) => {
+  ['name', 'phone', 'address', 'has_website', 'rating', 'reviews_count', 'telegram', 'has_bot', 'whatsapp', 'zalo', 'is_mobile', 'wa_link', 'tg_link'].forEach((key) => {
     const td = document.createElement('td');
     td.textContent = row[key] || '';
     tr.appendChild(td);
