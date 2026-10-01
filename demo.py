@@ -30,7 +30,8 @@ def _source_videos(name: str) -> tuple[str, str] | None:
         except (OSError, ValueError):
             continue
         app, bot = (os.path.join(BOT_OUT, folder, n) for n in ("video.mp4", "bot_video.mp4"))
-        return (app, bot) if os.path.exists(app) and os.path.exists(bot) else None
+        if os.path.exists(app) and os.path.exists(bot):
+            return (app, bot)
     return None
 
 

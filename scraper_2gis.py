@@ -30,6 +30,7 @@ from urllib.parse import quote, unquote, urlparse
 from playwright.sync_api import Page, sync_playwright
 
 from config import DATA_DIR, MAX_DELAY_SECONDS, MAX_LEADS, MIN_DELAY_SECONDS
+from enrich import _IG_RE, _IG_SKIP, _TG_RE, _WA_RE
 
 # Домен 2ГИС по коду страны. Неизвестная страна → российский.
 DOMAINS = {"RU": "ru", "KZ": "kz", "UZ": "uz", "KG": "kg", "AE": "ae"}
@@ -64,11 +65,7 @@ _TRANSLIT = dict(zip(
      "t", "u", "f", "h", "c", "ch", "sh", "sch", "", "y", "", "e", "yu", "ya"],
 ))
 
-_TG_RE = re.compile(r"(?:t\.me|telegram\.me)/([A-Za-z][A-Za-z0-9_]{4,31})")
 _AT_RE = re.compile(r"@([A-Za-z][A-Za-z0-9_]{4,31})")
-_WA_RE = re.compile(r"(?:wa\.me/|phone=)\+?(\d{7,15})")
-_IG_RE = re.compile(r"instagram\.com/([A-Za-z0-9_.]{2,30})(?![A-Za-z0-9_.])")
-_IG_SKIP = {"p", "reel", "reels", "stories", "explore", "accounts", "direct", "tv"}
 
 MAX_PAGES = 50
 
@@ -115,9 +112,13 @@ def _norm_city(name: str) -> str:
     return re.sub(r"[\s\-]+", " ", (name or "").lower().replace("ё", "е")).strip()
 
 
-def _catalog_alias(html: str, city: str, tld: str) -> str | None:
+def _catalog_alias(html: str, city: str, tld: str) -> tuple[str, bool] | None:
     """В каждой странице 2ГИС зашит каталог всех городов (название, страна, адресное
-    слово, ~1200 штук). Слаг из него точный, в отличие от угадывания."""
+    слово, ~1200 штук). Слаг из него точный, в отличие от угадывания.
+
+    Возвращает (alias, exact) — exact=False, если совпало только название, а
+    страна другая (бывают города-омонимы в разных странах 2ГИС): такой слаг
+    не гарантирован и нуждается в дополнительной проверке, как угаданный."""
     wanted = _norm_city(city)
     if not wanted or not html:
         return None
@@ -125,8 +126,8 @@ def _catalog_alias(html: str, city: str, tld: str) -> str | None:
                if _norm_city(name) == wanted]
     for country, alias in matches:
         if country == tld:
-            return alias  # город из нужной страны
-    return matches[0][1] if matches else None
+            return alias, True  # город из нужной страны
+    return (matches[0][1], False) if matches else None
 
 
 def _split_query(query: str) -> tuple[str, str]:
@@ -622,7 +623,9 @@ def run(query: str, max_leads: int = MAX_LEADS, russian: bool = False, country_c
     2ГИС ищет по всей карточке, поэтому в выдачу попадают ветклиники и зоомагазины
     с услугой «груминг»."""
     category, city = _split_query(query)
-    tld = DOMAINS.get((country_code or "").upper(), "ru")
+    cc = (country_code or "").upper()
+    tld = DOMAINS.get(cc, "ru")
+    tld_known = cc in DOMAINS  # иначе tld — угаданный дефолт, а не код страны пользователя
     keywords = _parse_filter(type_filter)
     headless = os.environ.get("LEADOKABAN_HEADLESS") == "1"
 
@@ -641,7 +644,7 @@ def run(query: str, max_leads: int = MAX_LEADS, russian: bool = False, country_c
         shutil.rmtree(os.path.join(DEBUG_DIR, "last_run"), ignore_errors=True)
 
         try:
-            base, first_listed = _resolve_city(session, tld, city, category)
+            base, first_listed = _resolve_city(session, tld, city, category, tld_known)
             search_url = f"{base}/search/{quote(category)}"
 
             try:
@@ -717,27 +720,43 @@ def run(query: str, max_leads: int = MAX_LEADS, russian: bool = False, country_c
             browser.close()
 
 
-def _resolve_city(session: _Session, tld: str, city: str, category: str) -> tuple[str, list[dict]]:
+def _resolve_city(session: _Session, tld: str, city: str, category: str,
+                  tld_known: bool = True) -> tuple[str, list[dict]]:
     """Находит рабочий слаг города. Неизвестный слаг 2ГИС не отвергает, а молча
-    показывает другой город (у нас по IP это Москва), поэтому проверяем и адрес
-    страницы, и то, что в адресах фирм есть название города."""
+    показывает другой город (у нас по IP это Москва). Слаг из каталога 2ГИС
+    считаем подтверждённым по URL, только если он совпал по правильной стране;
+    угаданный (CITY_SLUGS/транслитерация, либо каталожный матч не по той стране) —
+    дополнительно сверяем с адресами фирм, чтобы не попасть на другой реальный
+    город с совпавшим слагом.
+
+    tld_known=False — country_code не из DOMAINS, tld — угаданный дефолт "ru",
+    а не код страны пользователя: совпадение по такой «стране» в каталоге ничего
+    не подтверждает."""
     page = session.page
     is_latin = bool(re.fullmatch(r"[a-z0-9_\-]+", (city or "").strip().lower()))
     candidates = _city_slug_candidates(city)
+    confirmed: set[str] = set()  # слаги, подтверждённые каталогом 2ГИС (не угаданные)
 
     # Точный слаг из каталога городов 2ГИС (он зашит в любой странице сайта)
     if not is_latin:
         try:
             session.goto(f"https://2gis.{tld}/")
             page.wait_for_timeout(1500)
-            alias = _catalog_alias(page.content(), city, tld)
+            found = _catalog_alias(page.content(), city, tld)
         except RuntimeError:
             raise  # капча не решена
         except Exception:
-            alias = None
-        if alias:
+            found = None
+        if found:
+            alias, exact = found
+            if exact and tld_known:
+                confirmed.add(alias)
             candidates = [alias] + [c for c in candidates if c != alias]
 
+    # Для угаданных слагов (CITY_SLUGS/транслитерация, без подтверждения каталогом)
+    # нужна доп. проверка: угадывание может случайно совпасть со слагом ДРУГОГО
+    # реального города. Каталожный слаг этой проверке не подвергаем — его
+    # ложно отвергала сверка с адресами (там обычно только улица/дом, без города).
     stem = re.sub(r"[^а-яa-z]", "", (city or "").lower().replace("ё", "е"))[:6]
     tried: list[str] = []
     queue = list(candidates)
@@ -752,16 +771,20 @@ def _resolve_city(session: _Session, tld: str, city: str, category: str) -> tupl
         if f"/{slug}/" not in path + "/":
             # 2ГИС перекинул в другой город, но на его странице есть каталог городов
             if not is_latin:
-                alias = _catalog_alias(page.content(), city, tld)
-                if alias and alias not in queue and not any(t.startswith(alias + " ") for t in tried):
-                    queue.insert(0, alias)
+                found = _catalog_alias(page.content(), city, tld)
+                if found:
+                    alias, exact = found
+                    if alias not in queue and not any(t.startswith(alias + " ") for t in tried):
+                        if exact and tld_known:
+                            confirmed.add(alias)
+                        queue.insert(0, alias)
             continue
 
-        # Ссылки на фирмы есть, но город тот ли? Названия в адресах должны его содержать.
-        if stem and not is_latin and len(listed) >= 3:
+        if slug not in confirmed and stem and not is_latin and len(listed) >= 3:
             blob = " ".join((i.get("text") or "") for i in listed).lower().replace("ё", "е")
             if stem not in blob:
                 continue
+
         return base, listed
 
     where = session.snapshot("last_run", f"город не найден, пробовали: {', '.join(tried)}")

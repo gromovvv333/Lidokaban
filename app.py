@@ -188,6 +188,12 @@ class Api:
             for run in load_runs(RUNS_JSON_PATH)
         }
 
+    def _category_by_run(self) -> dict:
+        return {
+            run.get("run_id"): run.get("category") or ""
+            for run in load_runs(RUNS_JSON_PATH)
+        }
+
     def _leads_for(self, run_id: str) -> list[dict]:
         run_id = (run_id or "").strip()
         if run_id:
@@ -198,14 +204,16 @@ class Api:
         """Очередь конвейера: сначала просроченные напоминания, потом новые."""
         leads = self._leads_for(run_id)
         cities = self._city_by_run()
+        categories = self._category_by_run()
         tpls = templates_mod.load_templates()
 
         items = []
         for item in outreach.build_queue(leads):
             lead = item["lead"]
             city = cities.get(lead.get("run_id"), "")
+            category = categories.get(lead.get("run_id"), "")
             template_id, text = templates_mod.render(
-                lead, city=city, touch=item["touch"], templates=tpls
+                lead, city=city, category=category, touch=item["touch"], templates=tpls
             )
             items.append({
                 "key": item["key"],
@@ -256,12 +264,18 @@ class Api:
         copied = self.copy_to_clipboard(text)
         self.open_app_link(app_url, web_url)
         if lead:
-            demo_mod.reveal(lead, city, generate=False)
+            try:
+                demo_mod.reveal(lead, city, generate=False)
+            except (OSError, KeyError):
+                pass
         return copied
 
     def open_demo(self, lead: dict, city: str = "") -> str:
         """Кнопка «Демо»: открывает папку с видео, а если ролика нет, сначала собирает его (около минуты)."""
-        return demo_mod.reveal(lead, city, generate=True)
+        try:
+            return demo_mod.reveal(lead, city, generate=True)
+        except (OSError, KeyError):
+            return "missing"
 
     def get_templates(self) -> dict:
         return templates_mod.load_templates()

@@ -1,9 +1,13 @@
 import scraper
 import scraper_2gis
 
+SOURCES = {"google", "2gis"}
+
 
 def run(source: str, query: str, max_leads: int, russian: bool = False, country_code: str = "",
         type_filter: str = ""):
+    if source not in SOURCES:
+        raise ValueError(f"неизвестный источник: {source}")
     if source == "2gis":
         # код страны нужен для выбора домена (2gis.kz / 2gis.ru)
         return scraper_2gis.run(

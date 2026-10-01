@@ -107,11 +107,34 @@ def due_for_followup(record: dict, now: datetime.datetime, followup_days: int = 
     return days is not None and days >= followup_days
 
 
+def _sweep_stale(state: dict, now: datetime.datetime, followup_days: int, persist: bool) -> dict:
+    """Второе касание без ответа дольше followup_days — молчание считаем отказом.
+
+    `persist` — писать ли на диск: только когда state загружен нами самими
+    (вызывающий не передавал свой dict). Если state чужой, мутировать его на
+    месте нельзя — вызывающий не ждёт, что мы незаметно поменяем его объект,
+    поэтому отданные устаревшие записи — копии, а не записи в исходном dict."""
+    out = state if persist else dict(state)
+    changed = False
+    for key, record in state.items():
+        if record.get("status") == SENT and int(record.get("touch") or 1) >= 2:
+            days = _days_since(record.get("sent_at"), now)
+            if days is not None and days >= followup_days:
+                record = {**record, "status": DECLINED, "updated_at": now.isoformat(timespec="seconds")}
+                out[key] = record
+                changed = True
+    if changed and persist:
+        save_state(out)
+    return out
+
+
 def build_queue(leads: list[dict], state: dict | None = None, now: datetime.datetime | None = None,
                 followup_days: int = FOLLOWUP_DAYS) -> list[dict]:
     """Кого показывать в конвейере: сначала просроченные напоминания, потом новые."""
+    owns_state = state is None
     state = load_state() if state is None else state
     now = now or datetime.datetime.now()
+    state = _sweep_stale(state, now, followup_days, owns_state)
 
     followups, fresh = [], []
     for lead in leads:
@@ -167,7 +190,9 @@ def mark(key: str, status: str, template_id: str = "", touch: int = 1,
 
 def stats(leads: list[dict], state: dict | None = None) -> dict:
     """Сводка по лидам, у которых вообще есть Telegram-канал."""
+    owns_state = state is None
     state = load_state() if state is None else state
+    state = _sweep_stale(state, datetime.datetime.now(), FOLLOWUP_DAYS, owns_state)
     counts = {status: 0 for status in STATUS_LABELS}
     reachable = 0
     for lead in leads:
@@ -199,8 +224,10 @@ def _urls_from_contact(contact: str) -> dict:
 def awaiting(state: dict | None = None, now: datetime.datetime | None = None,
              followup_days: int = FOLLOWUP_DAYS) -> list[dict]:
     """Кому написали и ждём ответа. Отсюда пользователь руками ставит «ответил»."""
+    owns_state = state is None
     state = load_state() if state is None else state
     now = now or datetime.datetime.now()
+    state = _sweep_stale(state, now, followup_days, owns_state)
 
     rows = []
     for key, record in state.items():

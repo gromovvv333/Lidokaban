@@ -57,8 +57,12 @@ def load_runs(runs_path: str) -> list[dict]:
     if not os.path.exists(runs_path):
         return []
 
-    with open(runs_path, encoding="utf-8") as f:
-        return json.load(f)
+    try:
+        with open(runs_path, encoding="utf-8") as f:
+            data = json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return []
+    return data if isinstance(data, list) else []
 
 
 def _save_runs(runs_path: str, runs: list[dict]) -> None:

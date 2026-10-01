@@ -118,7 +118,7 @@ def pick_template_id(lead: dict, touch: int = 1) -> str:
     return "first_default"
 
 
-def render(lead: dict, city: str = "", template_id: str | None = None, touch: int = 1,
+def render(lead: dict, city: str = "", category: str = "", template_id: str | None = None, touch: int = 1,
            templates: dict | None = None) -> tuple[str, str]:
     """Возвращает (template_id, готовый текст) с подставленными полями лида."""
     templates = templates if templates is not None else load_templates()
@@ -128,7 +128,7 @@ def render(lead: dict, city: str = "", template_id: str | None = None, touch: in
     values = {
         "name": (lead.get("name") or "").strip(),
         "city": city.strip(),
-        "category": (lead.get("category") or "").strip(),
+        "category": category.strip(),
         "rating": (lead.get("rating") or "").strip(),
         # В CSV лежит гугловский формат «2,196» — в русском тексте это читается как дробь
         "reviews_count": re.sub(r"\D", "", str(lead.get("reviews_count") or "")),
