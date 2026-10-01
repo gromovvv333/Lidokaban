@@ -7,6 +7,10 @@ from playwright.sync_api import Page, sync_playwright
 from config import MAX_DELAY_SECONDS, MAX_LEADS, MIN_DELAY_SECONDS
 
 
+# Итоги последнего запуска: app.py показывает причину остановки пользователю
+LAST_STATS: dict = {}
+
+
 def _human_delay() -> None:
     time.sleep(random.uniform(MIN_DELAY_SECONDS, MAX_DELAY_SECONDS))
 
@@ -91,6 +95,8 @@ def run(query: str, max_leads: int = MAX_LEADS, russian: bool = False):
         seen_count = 0
         collected = 0
         stagnant_scrolls = 0
+        LAST_STATS.clear()
+        LAST_STATS.update({"collected": 0, "stop": ""})
 
         while collected < max_leads:
             total = listings.count()
@@ -101,6 +107,7 @@ def run(query: str, max_leads: int = MAX_LEADS, russian: bool = False):
                 if listings.count() <= total:
                     stagnant_scrolls += 1
                     if stagnant_scrolls >= 3:
+                        LAST_STATS["stop"] = "выдача Google Maps закончилась: список больше не подгружается"
                         break
                 else:
                     stagnant_scrolls = 0
@@ -126,5 +133,11 @@ def run(query: str, max_leads: int = MAX_LEADS, russian: bool = False):
 
                 yield details
                 collected += 1
+                LAST_STATS["collected"] = collected
 
+        if not LAST_STATS.get("stop"):
+            LAST_STATS["stop"] = (
+                f"набран заданный лимит ({max_leads} лидов)" if collected >= max_leads
+                else "работа прервана"
+            )
         browser.close()

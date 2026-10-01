@@ -206,6 +206,74 @@
     font-size: 13px;
   }
 
+  textarea {
+    width: 100%;
+    padding: 11px 13px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    font-family: -apple-system, "SF Pro Text", sans-serif;
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: var(--ink);
+    background: #fff;
+    resize: none;
+  }
+  textarea:focus { outline: none; border-color: var(--primary); }
+
+  .lead-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .lead-head > div:first-child { min-width: 0; }
+  .lead-name {
+    font-size: 17px; font-weight: 700; color: var(--primary-dark);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .lead-meta { font-size: 12.5px; color: var(--muted); margin-top: 3px; }
+  #oMeta { height: 2.9em; overflow: hidden; }
+  #oHint { min-height: 3em; }
+  .badge {
+    background: #f1e2cc;
+    color: var(--primary-dark);
+    border-radius: 999px;
+    padding: 4px 11px;
+    font-size: 11.5px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .badge.warn { background: #f6ddc4; }
+  .btn-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .btn-row .hunt-btn { margin-top: 0; }
+  .counter { font-size: 12.5px; color: var(--muted); }
+  .section-title {
+    margin: 22px 0 10px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--primary-dark);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  details.templates summary {
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--primary-dark);
+  }
+  details.templates .hint {
+    font-size: 12px;
+    color: var(--muted);
+    margin: 8px 0;
+  }
+
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -221,6 +289,7 @@
   <div class="tabs">
     <button id="tabSearch" class="active" onclick="showTab('search')">🐾 Охота</button>
     <button id="tabHistory" onclick="showTab('history')">📜 Прошлые вылазки</button>
+    <button id="tabOutreach" onclick="showTab('outreach')">📨 Рассылка</button>
   </div>
 
   <div id="searchView">
@@ -231,9 +300,11 @@
       <div class="field"><label>Источник</label>
         <select id="source">
           <option value="google">Google Maps</option>
-          <option value="2gis">2ГИС (нужен RU IP)</option>
+          <option value="2gis">2ГИС (нужен RU IP, город: Алматы или слаг almaty)</option>
         </select>
       </div>
+      <div class="field"><label>Сколько лидов собирать</label><input id="maxLeads" type="number" min="1" max="500" value="100"></div>
+      <div class="field"><label>Тип заведения содержит (только 2ГИС, необязательно)</label><input id="typeFilter" placeholder="груминг, зоосалон, салон для"></div>
       <div class="field"><label><input type="checkbox" id="russian" style="width:auto"> Русскоязычные бизнесы</label></div>
       <button id="startBtn" class="hunt-btn" onclick="start()">🐗 Вперёд, за лидами!</button>
       <div id="status"></div>
@@ -243,7 +314,7 @@
     <table id="results">
       <thead>
         <tr>
-          <th>Название</th><th>Телефон</th><th>Адрес</th><th>Сайт</th><th>Рейтинг</th><th>Отзывы</th><th>Telegram</th><th>Бот</th><th>WhatsApp</th><th>Zalo</th><th>Моб.</th><th>WhatsApp-чат</th><th>Telegram-чат</th><th>Рус.</th>
+          <th>Название</th><th>Телефон</th><th>Адрес</th><th>Сайт</th><th>Рейтинг</th><th>Отзывы</th><th>Telegram</th><th>Бот</th><th>WhatsApp</th><th>Instagram</th><th>Zalo</th><th>Моб.</th><th>WhatsApp-чат</th><th>Telegram-чат</th><th>Рус.</th>
         </tr>
       </thead>
       <tbody></tbody>
@@ -263,16 +334,77 @@
     </table>
   </div>
 
+  <div id="outreachView" hidden>
+    <div class="card">
+      <div class="field" style="margin-bottom:8px">
+        <label>Очередь из</label>
+        <select id="outreachRun" onchange="loadOutreach()"></select>
+      </div>
+      <div id="outreachStats" class="counter"></div>
+    </div>
+
+    <div id="outreachCard" class="card" hidden>
+      <div class="lead-head">
+        <div>
+          <div class="lead-name" id="oName"></div>
+          <div class="lead-meta" id="oMeta"></div>
+        </div>
+        <div class="badge" id="oTouch"></div>
+      </div>
+      <textarea id="oMessage" rows="15"></textarea>
+      <div class="btn-row">
+        <button class="hunt-btn" onclick="outreachSend()">📋 Скопировать и открыть чат</button>
+        <button class="link" id="oDemoBtn" onclick="outreachDemo()">🎬 Демо-видео</button>
+        <button class="link" id="oSiteBtn" onclick="outreachSite()">🌐 Сайт</button>
+        <button class="link" id="oIgBtn" onclick="outreachInstagram()">📷 Instagram</button>
+        <button class="link" onclick="outreachMark('написал')">Отправил ✓</button>
+        <button class="link" onclick="outreachMark('нет_тг')">Нет Telegram</button>
+        <button class="link" onclick="outreachMark('пропущен')">Пропустить</button>
+        <span class="counter" id="oCounter"></span>
+      </div>
+      <div class="lead-meta" id="oHint" style="margin-top:10px"></div>
+    </div>
+
+    <div id="outreachEmpty" class="card empty-note" hidden></div>
+
+    <div class="card">
+      <details class="templates">
+        <summary>✏️ Шаблоны сообщений</summary>
+        <div class="hint">
+          Подстановки: <b>{name}</b>, <b>{city}</b>, <b>{rating}</b>, <b>{reviews_count}</b>.
+          Нужный шаблон подбирается по лиду: нет сайта, много отзывов или базовый.
+        </div>
+        <div class="field">
+          <label>Шаблон</label>
+          <select id="tplSelect" onchange="showTemplate()"></select>
+        </div>
+        <textarea id="tplText" rows="12"></textarea>
+        <div class="btn-row">
+          <button class="link" onclick="saveTemplate()">Сохранить шаблон</button>
+          <span class="counter" id="tplSaved"></span>
+        </div>
+      </details>
+    </div>
+
+    <div class="section-title">⏳ Ждут ответа</div>
+    <table id="awaitingTable">
+      <thead>
+        <tr><th>Название</th><th>Контакт</th><th>Написал</th><th>Касание</th><th>Молчит</th><th></th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
 <script>
+const VIEWS = { search: 'tabSearch', history: 'tabHistory', outreach: 'tabOutreach' };
+
 function showTab(tab) {
-  const isSearch = tab === 'search';
-  document.getElementById('searchView').hidden = !isSearch;
-  document.getElementById('historyView').hidden = isSearch;
-  document.getElementById('tabSearch').classList.toggle('active', isSearch);
-  document.getElementById('tabHistory').classList.toggle('active', !isSearch);
-  if (!isSearch) {
-    loadHistory();
-  }
+  Object.keys(VIEWS).forEach((name) => {
+    document.getElementById(name + 'View').hidden = name !== tab;
+    document.getElementById(VIEWS[name]).classList.toggle('active', name === tab);
+  });
+  if (tab === 'history') loadHistory();
+  if (tab === 'outreach') openOutreach();
 }
 
 function setStatus(text, mood) {
@@ -291,7 +423,10 @@ function start() {
   setStatus('Кабан принюхивается, выходит на след...', 'busy');
 
   const source = document.getElementById('source').value;
-  window.pywebview.api.start(city, category, country, source, document.getElementById('russian').checked);
+  const maxLeads = document.getElementById('maxLeads').value;
+  window.pywebview.api.start(city, category, country, source,
+    document.getElementById('russian').checked, maxLeads,
+    document.getElementById('typeFilter').value);
 }
 
 function onStatus(text) {
@@ -330,11 +465,11 @@ function copyText(text, btn) {
 function addLeadRow(tbody, row) {
   const tr = document.createElement('tr');
   ['name', 'phone', 'address', 'website', 'rating', 'reviews_count', 'telegram', 'has_bot',
-   'whatsapp', 'zalo', 'is_mobile', 'wa_link', 'tg_link', 'russian'].forEach((key) => {
+   'whatsapp', 'instagram', 'zalo', 'is_mobile', 'wa_link', 'tg_link', 'russian'].forEach((key) => {
     const td = document.createElement('td');
     const value = row[key] || '';
 
-    if (key === 'website') {
+    if (key === 'website' || key === 'instagram') {
       // старые записи истории без URL показывают прежнее да/нет
       const url = value || '';
       if (url.startsWith('http')) {
@@ -344,7 +479,7 @@ function addLeadRow(tbody, row) {
         a.title = url;
         a.onclick = (ev) => { ev.preventDefault(); window.pywebview.api.open_url(url); };
         td.appendChild(a);
-      } else {
+      } else if (key === 'website') {
         td.textContent = row.has_website || '';
       }
     } else if (COPY_KEYS.includes(key) && value) {
@@ -384,7 +519,9 @@ function onLead(row) {
 
 function onDone(info) {
   const extra = info.skipped ? ` (${info.skipped} убежало без телефона)` : '';
-  setStatus(`Кабан набил ${info.collected} лидов в мешок${extra}. Файл: ${info.path}`, 'done');
+  const note = info.note ? ` ${info.note}` : '';
+  setStatus(`Кабан набил ${info.collected} лидов в мешок${extra}.${note} Файл: ${info.path}`,
+            info.error ? 'error' : 'done');
   document.getElementById('startBtn').disabled = false;
 }
 
@@ -449,6 +586,218 @@ function showRunLeads(runId, run) {
       'done'
     );
     showTab('search');
+  });
+}
+
+// --- Полуавтомат рассылки -------------------------------------------------
+// Автоотправки нет: готовим текст, открываем чат, отправляет человек.
+
+let outreachQueue = [];
+let outreachPos = 0;
+let templatesCache = {};
+
+function openOutreach() {
+  fillRunSelect().then(loadOutreach);
+  loadTemplates();
+}
+
+function fillRunSelect() {
+  const select = document.getElementById('outreachRun');
+  if (select.options.length) return Promise.resolve();
+  return window.pywebview.api.get_history().then((runs) => {
+    select.innerHTML = '<option value="">Все лиды за всё время</option>';
+    runs.forEach((run) => {
+      if (!run.collected) return;
+      const opt = document.createElement('option');
+      opt.value = run.run_id;
+      opt.textContent = `${run.category}, ${run.city} — ${(run.started_at || '').replace('T', ' ').slice(0, 16)}`;
+      select.appendChild(opt);
+    });
+  });
+}
+
+function loadOutreach() {
+  const runId = document.getElementById('outreachRun').value;
+  document.getElementById('outreachStats').textContent = 'Кабан перебирает мешок...';
+  window.pywebview.api.get_outreach_queue(runId).then((data) => {
+    outreachQueue = data.items || [];
+    outreachPos = 0;
+    renderStats(data.stats);
+    renderCurrent();
+  });
+  loadAwaiting();
+}
+
+function renderStats(stats) {
+  if (!stats) return;
+  const c = stats.counts || {};
+  document.getElementById('outreachStats').textContent =
+    `С Telegram: ${stats.reachable} · не писали: ${c['новый'] || 0} · написано: ${c['написал'] || 0} · ` +
+    `ответили: ${c['ответил'] || 0} · отказ: ${c['отказ'] || 0} · без Telegram: ${c['нет_тг'] || 0}`;
+}
+
+function renderCurrent() {
+  const card = document.getElementById('outreachCard');
+  const empty = document.getElementById('outreachEmpty');
+  const item = outreachQueue[outreachPos];
+
+  if (!item) {
+    card.hidden = true;
+    empty.hidden = false;
+    empty.textContent = outreachQueue.length
+      ? 'Очередь пройдена. Кабан доволен 🐗'
+      : 'Писать некому: ни у кого из лидов нет мобильного номера или @username.';
+    return;
+  }
+
+  empty.hidden = true;
+  card.hidden = false;
+
+  document.getElementById('oName').textContent = item.name;
+  const lang = item.russian === 'да' ? '🇷🇺 русскоязычный'
+             : item.russian === 'нет' ? 'не русскоязычный' : '';
+  const bits = [item.city, item.rating && `⭐ ${item.rating}`,
+                item.reviews_count && `${item.reviews_count} отзывов`,
+                item.contact, lang].filter(Boolean);
+  document.getElementById('oMeta').textContent = bits.join(' · ');
+
+  const touch = document.getElementById('oTouch');
+  touch.textContent = item.touch >= 2 ? 'Напоминание' : 'Первое касание';
+  touch.className = item.touch >= 2 ? 'badge warn' : 'badge';
+
+  const siteBtn = document.getElementById('oSiteBtn');
+  siteBtn.style.visibility = /^https?:\/\//i.test(item.website || '') ? 'visible' : 'hidden';
+  const igBtn = document.getElementById('oIgBtn');
+  igBtn.style.visibility = item.instagram ? 'visible' : 'hidden';
+
+  document.getElementById('oMessage').value = item.message;
+  document.getElementById('oCounter').textContent =
+    `${outreachPos + 1} из ${outreachQueue.length}`;
+  document.getElementById('oHint').textContent = item.channel === 'phone'
+    ? 'Пишем по номеру. Если Telegram у этого номера нет, чат не откроется — жмите «Нет Telegram».'
+    : 'Пишем на @username, найденный на сайте.';
+}
+
+function demoLead(item) {
+  return { name: item.name, address: item.address, phone: item.lead_phone, website: item.website };
+}
+
+function outreachInstagram() {
+  const item = outreachQueue[outreachPos];
+  if (item && item.instagram) window.pywebview.api.open_url(item.instagram);
+}
+
+function outreachSite() {
+  const item = outreachQueue[outreachPos];
+  if (item && item.website) window.pywebview.api.open_url(item.website);
+}
+
+function outreachDemo() {
+  const item = outreachQueue[outreachPos];
+  if (!item) return;
+  const btn = document.getElementById('oDemoBtn'), hint = document.getElementById('oHint');
+  btn.disabled = true;
+  hint.textContent = 'Открываю демо… если роликов ещё нет, соберу оба (бот и мини-апп), это около двух минут.';
+  window.pywebview.api.open_demo(demoLead(item), item.city).then((status) => {
+    btn.disabled = false;
+    hint.textContent = status === 'missing'
+      ? 'Не вышло собрать демо: проверьте проект dark_tail_bot (venv, playwright).'
+      : `Два видео «${item.name}» (бот и миниапп) выделены в Finder (папка Документы/ЛидоКабан/Демо). Перетащите их в чат.`;
+  });
+}
+
+function outreachSend() {
+  const item = outreachQueue[outreachPos];
+  if (!item) return;
+  const text = document.getElementById('oMessage').value;
+  window.pywebview.api.send_step(item.app_url, item.web_url, text, demoLead(item), item.city).then((copied) => {
+    document.getElementById('oHint').textContent = copied
+      ? 'Текст в буфере. Вставьте в чат (Cmd+V) и отправьте, потом жмите «Отправил».'
+      : 'Чат открыт, но скопировать текст не вышло — скопируйте из поля вручную.';
+  });
+}
+
+function outreachMark(status) {
+  const item = outreachQueue[outreachPos];
+  if (!item) return;
+  window.pywebview.api.mark_outreach(
+    item.key, status, item.template_id, item.touch, item.name, item.contact
+  ).then(() => {
+    outreachPos += 1;
+    renderCurrent();
+    if (status === 'написал') loadAwaiting();
+  });
+}
+
+function loadAwaiting() {
+  const tbody = document.querySelector('#awaitingTable tbody');
+  window.pywebview.api.get_awaiting().then((rows) => {
+    tbody.innerHTML = '';
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="6" class="empty-note">Пока никому не писали 🐗</td></tr>';
+      return;
+    }
+    rows.forEach((row) => {
+      const tr = document.createElement('tr');
+
+      [row.name, row.contact, (row.sent_at || '').replace('T', ' ').slice(0, 16),
+       row.touch >= 2 ? 'второе' : 'первое',
+       row.days === null ? '' : `${row.days} дн.${row.due ? ' ⏰' : ''}`].forEach((text) => {
+        const td = document.createElement('td');
+        td.textContent = text;
+        tr.appendChild(td);
+      });
+
+      const actions = document.createElement('td');
+      [['✈ Чат', () => window.pywebview.api.open_app_link(row.app_url, row.web_url)],
+       ['Ответил', () => markAwaiting(row, 'ответил')],
+       ['Отказ', () => markAwaiting(row, 'отказ')]].forEach(([label, handler]) => {
+        const btn = document.createElement('button');
+        btn.className = 'link';
+        btn.style.marginRight = '6px';
+        btn.textContent = label;
+        btn.onclick = handler;
+        actions.appendChild(btn);
+      });
+      tr.appendChild(actions);
+      tbody.appendChild(tr);
+    });
+  });
+}
+
+function markAwaiting(row, status) {
+  window.pywebview.api.mark_outreach(row.key, status, '', row.touch, row.name, row.contact)
+    .then(loadOutreach);
+}
+
+function loadTemplates() {
+  window.pywebview.api.get_templates().then((tpls) => {
+    templatesCache = tpls || {};
+    const select = document.getElementById('tplSelect');
+    select.innerHTML = '';
+    Object.keys(templatesCache).forEach((id) => {
+      const opt = document.createElement('option');
+      opt.value = id;
+      opt.textContent = templatesCache[id].title || id;
+      select.appendChild(opt);
+    });
+    showTemplate();
+  });
+}
+
+function showTemplate() {
+  const id = document.getElementById('tplSelect').value;
+  document.getElementById('tplText').value = (templatesCache[id] || {}).text || '';
+  document.getElementById('tplSaved').textContent = '';
+}
+
+function saveTemplate() {
+  const id = document.getElementById('tplSelect').value;
+  const text = document.getElementById('tplText').value;
+  window.pywebview.api.save_template(id, text).then((tpls) => {
+    templatesCache = tpls || {};
+    document.getElementById('tplSaved').textContent = 'Сохранено ✓';
+    loadOutreach();
   });
 }
 </script>

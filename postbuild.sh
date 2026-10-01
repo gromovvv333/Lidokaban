@@ -8,7 +8,7 @@ zip -qd "dist/Парсер лидов.app/Contents/Resources/lib/python314.zip" 
 [ -d "$L/playwright" ] || cp -R $SP/playwright $SP/greenlet "$L"/
 find "$L/playwright" "$L/greenlet" -name __pycache__ -prune -exec rm -rf {} + 2>/dev/null; true # "$L/greenlet" -name __pycache__ -prune -exec rm -rf {} +
 # свежие исходники поверх упакованных в zip (быстрее полной пересборки)
-for m in config scraper phone storage enrich sources scraper_2gis; do
+for m in config scraper phone storage enrich sources scraper_2gis outreach templates demo; do
   zip -qd "dist/Парсер лидов.app/Contents/Resources/lib/python314.zip" "$m.pyc" 2>/dev/null || true
   cp $m.py "$L"/
 done

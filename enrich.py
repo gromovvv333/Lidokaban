@@ -7,6 +7,18 @@ _UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome
 _TG_RE = re.compile(r"(?:t\.me|telegram\.me)/([A-Za-z][A-Za-z0-9_]{4,31})(?![A-Za-z0-9_])")
 _TG_SKIP = {"share", "joinchat", "addstickers", "iv", "proxy", "socks", "login"}
 _WA_RE = re.compile(r"(?:wa\.me/|api\.whatsapp\.com/send/?\?(?:[^\"'\s]*&)?phone=)\+?(\d{7,15})")
+_IG_RE = re.compile(r"instagram\.com/([A-Za-z0-9_.]{2,30})(?![A-Za-z0-9_.])")
+_IG_SKIP = {"p", "reel", "reels", "stories", "explore", "accounts", "direct", "tv"}
+
+
+def _instagram(website_url: str, html: str | None) -> str:
+    """Инстаграм салона: Google Maps часто отдаёт ссылку на инстаграм прямо как «сайт»
+    (у салона нет своего сайта), иначе ищем ссылку в HTML настоящего сайта."""
+    m = _IG_RE.search(website_url or "")
+    if not m or m.group(1).lower() in _IG_SKIP:
+        m = _IG_RE.search(html or "")
+    username = m.group(1) if m and m.group(1).lower() not in _IG_SKIP else ""
+    return f"https://instagram.com/{username}" if username else ""
 
 
 def _fetch(url: str, timeout: int = 8) -> str | None:
@@ -35,7 +47,7 @@ def find_messengers(website_url: str) -> dict:
     на сайте русский язык (site_ru: True/False, None — сайт не открылся)."""
     html = _fetch(website_url) if website_url else None
     if not html:
-        return {"telegram": "", "whatsapp": "", "site_ru": None}
+        return {"telegram": "", "whatsapp": "", "instagram": _instagram(website_url, None), "site_ru": None}
 
     telegram = next(
         (m for m in _TG_RE.findall(html) if m.lower() not in _TG_SKIP), ""
@@ -44,6 +56,7 @@ def find_messengers(website_url: str) -> dict:
     return {
         "telegram": f"@{telegram}" if telegram else "",
         "whatsapp": f"+{wa.group(1)}" if wa else "",
+        "instagram": _instagram(website_url, html),
         "site_ru": _site_is_russian(html),
     }
 
@@ -90,6 +103,10 @@ def messenger_links(phone: str) -> dict:
 
 def build_row(lead: dict, phone: str, run_id: str, country_code: str) -> dict:
     contacts = find_messengers(lead.get("website_url") or "")
+    # 2ГИС иногда сам отдаёт Telegram/WhatsApp в карточке — берём, если на сайте не нашли
+    telegram = contacts["telegram"] or lead.get("telegram") or ""
+    whatsapp = contacts["whatsapp"] or lead.get("whatsapp") or ""
+    instagram = contacts["instagram"] or lead.get("instagram") or ""
     return {
         "run_id": run_id,
         "name": lead.get("name") or "",
@@ -99,9 +116,10 @@ def build_row(lead: dict, phone: str, run_id: str, country_code: str) -> dict:
         "website": lead.get("website_url") or "",
         "rating": lead.get("rating") or "",
         "reviews_count": lead.get("reviews_count") or "",
-        "telegram": contacts["telegram"],
-        "has_bot": is_telegram_bot(contacts["telegram"]),
-        "whatsapp": contacts["whatsapp"],
+        "telegram": telegram,
+        "has_bot": is_telegram_bot(telegram),
+        "whatsapp": whatsapp,
+        "instagram": instagram,
         "zalo": zalo_link(phone, country_code),
         "russian": russian_speaking(lead, contacts["site_ru"]),
         **messenger_links(phone),

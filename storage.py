@@ -4,7 +4,7 @@ import os
 
 FIELDNAMES = [
     "run_id", "name", "phone", "address", "has_website", "website", "rating", "reviews_count",
-    "telegram", "has_bot", "whatsapp", "zalo", "is_mobile", "wa_link", "tg_link", "russian",
+    "telegram", "has_bot", "whatsapp", "instagram", "zalo", "is_mobile", "wa_link", "tg_link", "russian",
 ]
 
 
@@ -41,6 +41,15 @@ def get_leads_for_run(csv_path: str, run_id: str) -> list[dict]:
 
     with open(csv_path, encoding="utf-8") as f:
         return [row for row in csv.DictReader(f) if row.get("run_id") == run_id]
+
+
+def load_all_leads(csv_path: str) -> list[dict]:
+    """Все собранные лиды за всю историю."""
+    if not os.path.exists(csv_path):
+        return []
+
+    with open(csv_path, encoding="utf-8") as f:
+        return list(csv.DictReader(f))
 
 
 def load_runs(runs_path: str) -> list[dict]:
